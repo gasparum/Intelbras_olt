@@ -1,0 +1,94 @@
+import json
+import os
+import time
+from os.path import dirname, join
+from dotenv import load_dotenv
+from netmiko import ConnectHandler
+from datetime import date
+
+
+def load_dotenv_file(linha=None):
+
+    arquivo = open('lista_olt', 'r')
+    linhas = {}
+    linhas = arquivo.readlines()
+    campos = linhas[linha].replace("\n", "").split(",")  # 6
+    devicename = campos[0]
+    ip = campos[1]
+    username = campos[2]
+    password = campos[3]
+    
+    return {
+        "username": username,
+        "password": password,
+        "ip": ip,
+        "devicename": devicename
+    }
+
+
+def set_connection_params(port='22', host=None, username=None, password=None, device_type='cisco_ios'):
+
+    return {
+        'port': port,
+        'host': host,
+        'username': username,
+        'password': password,
+        'device_type': device_type,
+        'verbose': True,
+        'global_delay_factor': 10
+    }
+
+
+def run_command(command=None, context=None, sleep_time=5, delay_factor=2):
+
+    output = context.send_command_timing(
+        command_string=command,
+        strip_prompt=False,
+        strip_command=False,
+        delay_factor=delay_factor
+    )
+    time.sleep(sleep_time)
+
+    return output
+
+def main():
+    contador = 0
+    while contador < 9999:
+        credentials = load_dotenv_file(contador)
+        zhone_intelbras = set_connection_params(
+            host=credentials["ip"], username=credentials["username"], password=credentials["password"])
+        devicename=credentials["devicename"]
+        if devicename == "fim":
+            break
+        else:
+            contador += 1
+        print('Connecting...')
+
+        with ConnectHandler(**zhone_intelbras) as device:
+
+            print('Connected to OLT, running backup....')
+
+            device.send_command('setline 0')
+            time.sleep(4)
+        
+            data = (date.today())
+
+            command = f'backup network tftp 172.21.0.227 filename '+devicename+'-'+str(data)+'.cfg'
+            cli_output = run_command(command, device, sleep_time=10)
+        
+            #print(cli_output)
+        
+            print('Ckecking backup....')
+            command = f'backup network status'
+            cli_output = run_command(command, device, sleep_time=2)
+            #print(cli_output )
+
+            if cli_output.find('success'):
+                print('Backup Sucesso')
+            else:
+                print('Backup com Erro')
+
+
+
+if __name__ == "__main__":
+    main()
