@@ -41,7 +41,7 @@ source venv/bin/actvate
 
 Com o virtualenv ativo, instale as dependências:
 ```
-pip install -r requirements.txt
+pip install -r requi.txt
 ```
 
 ## Adicionando OLTs para Backup
